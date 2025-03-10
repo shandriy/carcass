@@ -22,7 +22,7 @@ while [ -n "$(cat index/4)" ]; do
     printf "Indexing %s\n" "$decoded_url"
     curl "$decoded_url" -so "index/0/$url"
 
-    grep -oE "[[:alnum:]]+" "index/0/$url" | sort | tr "[:upper:]" "[:lower:]" > "index/1/-$url"
+    grep -oE "[A-Za-z0-9]+" "index/0/$url" | sort | tr "[:upper:]" "[:lower:]" > "index/1/-$url"
     cat "index/1/-$url" | sort -u > "index/1/$url"
 
     while read word; do
@@ -31,7 +31,7 @@ while [ -n "$(cat index/4)" ]; do
 
     rm "index/1/-$url"
 
-    grep -oE "https?://[[:alnum:]._~/$'+%-]+" "index/0/$url" > "index/-5"
+    grep -oE "https?://[A-Za-z0-9._~/$'+%-]+" "index/0/$url" > "index/-5"
 
     while read redirect; do
       printf "%s\n" $(printf %s "$redirect" | base64 -w 0) >> index/5
