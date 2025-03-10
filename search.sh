@@ -28,3 +28,5 @@ while read line; do
 done < "_results"
 
 rm "_results"
+
+cat results | sort -u > results
