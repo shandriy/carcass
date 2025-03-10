@@ -6,8 +6,9 @@ mkdir -p index
 mkdir -p index/0
 mkdir -p index/1
 mkdir -p index/2
+mkdir -p index/3
 
-printf %s "$1" | base64 >> index/3
+printf %s "$1" | base64 >> index/4
 
 while read url; do
   decoded_url=$(printf %s "$url" | base64 -d)
@@ -45,4 +46,8 @@ while read url; do
     url_contents="${url_contents#*[^A-Za-z0-9]}"
     length_1=${#url_contents}
   done
-done < index/3
+
+  while read token; do
+    printf "%s\n" "$url" >> "index/3/$(printf %s "$token" | base64)"
+  done < "index/1/$url"
+done < index/4
