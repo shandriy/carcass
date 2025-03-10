@@ -28,7 +28,12 @@ while [ -n "$(cat index/4)" ]; do
 
     rm "index/1/-$url"
 
-    grep -oE "https?://[[:alnum:]._~/$'+%-]+" "index/0/$url" | base64 >> "index/5"
+    grep -oE "https?://[[:alnum:]._~/$'+%-]+" "index/0/$url" > "index/-5"
+
+    while read redirect; do
+      printf %s "$redirect" | base64 >> index/5
+    done < index/-5
+    rm index/-5
 
     while read token; do
       printf "%s\n" "$url" >> "index/3/$(printf %s "$token" | base64)"
