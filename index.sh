@@ -10,7 +10,7 @@ mkdir -p index/3
 touch index/5
 touch index/6
 
-printf %s "$1" | base64 >> index/4
+printf %s "$1" | base64 -w 0 >> index/4
 
 while [ -n "$(cat index/4)" ]; do
   while read url; do
@@ -31,12 +31,12 @@ while [ -n "$(cat index/4)" ]; do
     grep -oE "https?://[[:alnum:]._~/$'+%-]+" "index/0/$url" > "index/-5"
 
     while read redirect; do
-      printf %s "$redirect" | base64 >> index/5
+      printf %s "$redirect" | base64 -w 0 >> index/5
     done < index/-5
     rm index/-5
 
     while read token; do
-      printf "%s\n" "$url" >> "index/3/$(printf %s "$token" | base64)"
+      printf "%s\n" "$url" >> "index/3/$(printf %s "$token" | base64 -w 0)"
     done < "index/1/$url"
 
     printf "%s\n" "$url" >> index/6
