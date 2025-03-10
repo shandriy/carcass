@@ -2,52 +2,66 @@
 
 rm -rf index
 
-mkdir -p index
 mkdir -p index/0
 mkdir -p index/1
 mkdir -p index/2
 mkdir -p index/3
 
+touch index/5
+touch index/6
+
 printf %s "$1" | base64 >> index/4
 
-while read url; do
-  decoded_url=$(printf %s "$url" | base64 -d)
+while true; do
+  while read url; do
+    decoded_url=$(printf %s "$url" | base64 -d)
 
-  echo "Indexing $decoded_url"
-  curl "$decoded_url" -so "index/0/$url"
+    echo "Indexing $decoded_url"
+    curl "$decoded_url" -so "index/0/$url"
 
-  url_contents=$(cat "index/0/$url")
-  length_1=${#url_contents}
-  length_2=$((${#url_contents} + 1))
-
-  touch "index/1/$url"
-
-  while [ "$length_1" -lt "$length_2" ]; do
-    token="${url_contents%%[^A-Za-z0-9]*}"
-    token=$(printf %s "$token" | tr "[:upper:]" "[:lower:]")
-
-    if [ "$token" != "" ]; then
-      contains_word=$(grep -xF "$token" "index/1/$url")
-      word_index=$(grep -xsnF "$token" "index/1/$url")
-      word_index=${word_index%:*}
-
-      if [ -z "$contains_word" ]; then
-        printf "%s\n" "$token" >> "index/1/$url"
-        printf "1\n" >> "index/2/$url"
-      else
-        word_count=$(($(sed "${word_index}q;d" "index/2/$url") + 1))
-        sed "$word_index c$word_count" "index/2/$url" > "index/2/-$url"
-        cat "index/2/-$url" > "index/2/$url"
-        rm "index/2/-$url"
-      fi
-    fi
-
-    length_2=${#url_contents}
-    url_contents="${url_contents#*[^A-Za-z0-9]}"
+    url_contents=$(cat "index/0/$url")
     length_1=${#url_contents}
-  done
+    length_2=$((${#url_contents} + 1))
 
-  while read token; do
-    printf "%s\n" "$url" >> "index/3/$(printf %s "$token" | base64)"
-  done < "index/1/$url"
-done < index/4
+    touch "index/1/$url"
+
+    while [ "$length_1" -lt "$length_2" ]; do
+      token="${url_contents%%[^A-Za-z0-9]*}"
+      token=$(printf %s "$token" | tr "[:upper:]" "[:lower:]")
+
+      if [ "$token" != "" ]; then
+        contains_word=$(grep -xF "$token" "index/1/$url")
+        word_index=$(grep -xsnF "$token" "index/1/$url")
+        word_index=${word_index%:*}
+
+        if [ -z "$contains_word" ]; then
+          printf "%s\n" "$token" >> "index/1/$url"
+          printf "1\n" >> "index/2/$url"
+        else
+          word_count=$(($(sed "${word_index}q;d" "index/2/$url") + 1))
+          sed "$word_index c$word_count" "index/2/$url" > "index/2/-$url"
+          cat "index/2/-$url" > "index/2/$url"
+          rm "index/2/-$url"
+        fi
+      fi
+
+      length_2=${#url_contents}
+      url_contents="${url_contents#*[^A-Za-z0-9]}"
+      length_1=${#url_contents}
+    done
+
+    grep -o -E "https?://[[:alnum:]._~/$'+%-]+" "index/0/$url" | base64 >> "index/5"
+    grep -o -E "https?://[[:alnum:]._~/$'+%-]+" "index/0/$url"
+    grep -o -E "https?://[[:alnum:]._~/$'+%-]+" "index/0/$url" | base64
+
+    while read token; do
+      printf "%s\n" "$url" >> "index/3/$(printf %s "$token" | base64)"
+    done < "index/1/$url"
+
+    printf "%s\n" "$url" >> index/6
+  done < index/4
+
+  cat index/5
+  cat index/5 > index/4
+  printf "" > index/5
+done
