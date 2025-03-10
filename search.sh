@@ -12,21 +12,19 @@ for arg; do
   else
     while read line; do
       if [ -n "$(grep -xF "$line" results)" ]; then
-        printf "%s\n" "$line" >> "_results"
+        printf "%s\n" "$line" >> _results
       fi
     done < "index/3/$arg"
 
-    rm results
-    mv "_results" results
+    mv _results results
   fi
 done
 
-mv results "_results"
-
 while read line; do
-  printf "%s\n" $(printf %s "$line" | base64 -d) >> results
-done < "_results"
+  printf "%s\n" $(printf %s "$line" | base64 -d) >> _results
+done < results
 
-rm "_results"
+cat _results | sort -u > results
+rm _results
 
-cat results | sort -u > results
+cat results
