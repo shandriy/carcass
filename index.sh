@@ -26,11 +26,7 @@ while [ -n "$(cat index/4)" ]; do
     cat "index/1/-$url" | sort -u > "index/1/$url"
 
     while read word; do
-      word_count=$(grep -cxF "$word" "index/1/-$url")
-      printf %s "$word_count" >> "index/2/$url"
-      if [ "$(cat index/7)" -lt "$word_count" ]; then
-        printf %s "$word_count" > index/7
-      fi
+      grep -cxF "$word" "index/1/-$url" >> "index/2/$url"
     done < "index/1/$url"
 
     rm "index/1/-$url"
@@ -44,6 +40,11 @@ while [ -n "$(cat index/4)" ]; do
 
     while read token; do
       printf "%s\n" "$url" >> "index/3/$token"
+
+      word_count=$(wc -l < "index/3/$token")
+      if [ "$(cat index/7)" -lt "$word_count" ]; then
+        printf %s "$word_count" > index/7
+      fi
     done < "index/1/$url"
 
     printf "%s\n" "$url" >> index/6
