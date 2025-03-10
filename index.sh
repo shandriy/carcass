@@ -42,6 +42,11 @@ while [ -n "$(cat index/4)" ]; do
     printf "%s\n" "$url" >> index/6
   done < index/4
 
-  cat index/5 > index/4
+  printf "" > index/4
+  while read url; do
+    if [ $(grep -cxF "$url" index/6) -eq 0 ]; then
+      printf "%s\n" "$url" >> index/4
+    fi
+  done < index/5
   printf "" > index/5
 done
