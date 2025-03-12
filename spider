@@ -1,0 +1,54 @@
+#!/bin/sh
+
+output_dir="$1"
+
+to_crawl="$output_dir/lists.txt"
+
+mkdir -p "$output_dir"
+touch "$to_crawl"
+mkdir -p "$output_dir/http"
+
+while [ -s "$to_crawl" ]; do
+  while read url; do
+    printf "Crawling %s\n" "$url"
+    printf "" > "$output_dir/temp2.txt"
+
+    base_url=$(printf %s "$url" | sed s/\\\(^https\\\{0,1\\\}:\\/\\/[^\/]\*\\\)\\/.\*\$/\\1/)
+
+    encoded_url="$(printf %s "$url" | base64 -w0)"
+    split_encoded_url=$(printf %s "$encoded_url" | fold -w1 | paste -sd/)
+    split_encoded_url=$(printf %s "$split_encoded_url" | sed s/\\\([[:upper:]]\\\)/\\1\\1/g)
+    split_encoded_url=$(printf %s "$split_encoded_url" | sed s/=/END/g)
+
+    if [ -d "$output_dir/http/$split_encoded_url" ]; then
+      continue
+    fi
+
+    date="$(date +%s)"
+    out_file="$output_dir/http/$split_encoded_url/$date"
+
+    mkdir -p "$output_dir/http/$split_encoded_url"
+    curl -s "$url" > "$out_file"
+
+    grep -oiE "(href|src)=['\"][^'\"]*['\"]" "$out_file" > "$output_dir/temp1.txt"
+
+    sed -i s/^[^\'\"]\*[\'\"]//\;s/[\'\"]\$// "$output_dir/temp1.txt"
+
+    while read unformatted_url; do
+      match=$(printf %s "$unformatted_url" | sed s/^https\\\{0,1\\\}:\\/\\/.\*\$//)
+
+      if [ -z $match ]; then
+        printf %s\\n "$unformatted_url" >> "$output_dir/temp2.txt"
+      else
+        printf %s\\n "$base_url/$unformatted_url" >> "$output_dir/temp2.txt"
+      fi
+    done < "$output_dir/temp1.txt"
+  done < "$to_crawl"
+
+  cat "$output_dir/temp2.txt" > "$to_crawl"
+  rm -f "$output_dir/temp1.txt"
+  rm -f "$output_dir/temp2.txt"
+done
+
+rm -f "$output_dir/temp1.txt"
+rm -f "$output_dir/temp2.txt"
