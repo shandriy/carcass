@@ -10,7 +10,6 @@ mkdir -p "$output_dir/http"
 
 while [ -s "$to_crawl" ]; do
   while read url; do
-    printf "Crawling %s\n" "$url"
     printf "" > "$output_dir/temp2.txt"
 
     base_url=$(printf %s "$url" | sed s/\\\(^https\\\{0,1\\\}:\\/\\/[^\/]\*\\\)\\/.\*\$/\\1/)
@@ -23,6 +22,8 @@ while [ -s "$to_crawl" ]; do
     if [ -d "$output_dir/http/$split_encoded_url" ]; then
       continue
     fi
+
+    printf "Crawling %s\n" "$url"
 
     date="$(date +%s)"
     out_file="$output_dir/http/$split_encoded_url/$date"
