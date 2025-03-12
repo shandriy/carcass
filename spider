@@ -36,8 +36,11 @@ while [ -s "$to_crawl" ]; do
 
     while read unformatted_url; do
       match=$(printf %s "$unformatted_url" | sed s/^https\\\{0,1\\\}:\\/\\/.\*\$//)
+      if [ -n "$match" ]; then
+        match=$(printf %s "$unformatted_url" | sed s/^\\/\\/.\*\$//)
+      fi
 
-      if [ -z $match ]; then
+      if [ -z "$match" ]; then
         printf %s\\n "$unformatted_url" >> "$output_dir/temp2.txt"
       else
         printf %s\\n "$base_url/$unformatted_url" >> "$output_dir/temp2.txt"
