@@ -29,7 +29,7 @@ while [ -s "$to_crawl" ]; do
     out_file="$output_dir/http/$split_encoded_url/$date"
 
     mkdir -p "$output_dir/http/$split_encoded_url"
-    curl -s "$url" > "$out_file"
+    curl -sL "$url" > "$out_file"
 
     grep -oiE "(href|src)=['\"][^'\"]*['\"]" "$out_file" > "$output_dir/temp1.txt"
 
