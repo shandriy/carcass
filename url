@@ -1,0 +1,20 @@
+#!/bin/sh
+
+printf "" > "$2"
+
+grep -ioE 'url\([^\)]+\)' "$1" >> "$2"
+grep -ioE 'https?://[][:alnum:]?=._\-~@!$&()*+,;%#[]+' "$1" >> "$2"
+grep -ioE '(href|src)[[:space:]]*=[[:space:]]*"[^"]+"' "$1" >> "$2"
+grep -ioE '(href|src)[[:space:]]*=[[:space:]]*'\''[^'\'']+'\''' "$1" >> "$2"
+
+sort -uo "$2" "$2"
+
+sed -i'' -E 's/[[:space:]]*\)$//' "$2"
+sed -i'' -E 's/^[Uu][Rr][Ll]\([[:space:]]*//' "$2"
+sed -i'' -E 's/^[Ss][Rr][Cc][[:space:]]*=[[:space:]]*//' "$2"
+sed -i'' -E 's/^[Hh][Rr][Ee][Ff][[:space:]]*=[[:space:]]*//' "$2"
+
+sed -i'' -E 's/^"//' "$2"
+sed -i'' -E 's/"$//' "$2"
+sed -i'' -E 's/^'\''//' "$2"
+sed -i'' -E 's/'\''$//' "$2"
