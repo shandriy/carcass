@@ -10,7 +10,7 @@ mkdir -p "$output_dir/http"
 
 while [ -s "$to_crawl" ]; do
   while read url; do
-    printf "" > "$output_dir/temp2.txt"
+    printf "" >> "$output_dir/temp2.txt"
 
     base_url=$(printf %s "$url" | sed s/\\\(^https\\\{0,1\\\}:\\/\\/[^\/]\*\\\)\\/.\*\$/\\1/)
 
