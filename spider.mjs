@@ -44,9 +44,23 @@ function crawl(href) {
       const buffer = Buffer.concat(binData);
       const textData = buffer.toString("utf8");
 
-      textData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, function(_1, _2, match2) {
-        crawl(match2);
-      });
+      const matches = [];
+
+      function matchRegex(_1, _2, match2) {
+        try {
+          let matchHref = new URL(match2, baseUrl).href;
+
+          if (!matches.includes(matchHref)) matches.push(matchHref);
+        } catch {}
+      }
+
+      textData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, matchRegex);
+      textData.replace(/(["'`])(https?:\/\/.+?\1)/gis, matchRegex);
+      textData.replace(/url\((["'])(.*?)\1\)/gis, matchRegex);
+
+      matches.forEach(match => {
+        crawl(match);
+      })
 
       const now = Date.now();
       const index = data.crawled.length;
