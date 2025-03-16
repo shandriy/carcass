@@ -5,77 +5,45 @@ import * as https from "node:https";
 let data = {
   crawled: [],
   crawledData: [],
-  toCrawl: []
+  crawling: []
 }
 
 if (fs.existsSync("crawldata/data")) {
-  data = JSON.parse(fs.readFileSync("crawldata/data", { encoding: "utf8" }));
+  data = JSON.parse(fs.readFileSync("crawldata/data", { encoding: "utf8", flag: "r" }));
 }
 
-const currentCrawl = Array.from(data.toCrawl);
-data.toCrawl = [];
+function crawl(href) {
+  let baseUrl;
+  try {
+    baseUrl = new URL(href);
+  } catch {
+    return;
+  }
 
-let currentCrawlCounter = 0;
-const currentCrawlLength = currentCrawl.length;
+  if (baseUrl.protocol !== "http:" && baseUrl.protocol !== "https:")
+    return;
+  if (data.crawled.includes(baseUrl.href) || data.crawling.includes(baseUrl.href))
+    return;
 
-currentCrawl.forEach(href => {
-  let requestReached = false
+  data.crawling.push(baseUrl.href);
 
-  const baseUrl = new URL(href);
-
-  console.log(`Crawling \`${baseUrl.href}'`);
+  console.log(`Crawling \`${baseUrl}'`)
 
   const httpx = baseUrl.protocol === "http:" ? http : https;
-
-  setTimeout(() => {
-    if (!requestReached) {
-      console.log(`Skipping \`${baseUrl.href}'`);
-
-      currentCrawlCounter++;
-      if (currentCrawlCounter >= currentCrawlLength) {
-        fs.writeFileSync("crawldata/data", JSON.stringify(data));
-        process.exit();
-      }
-    }
-  }, 10000)
-
   httpx.get(baseUrl, res => {
-    requestReached = true;
-
-    try {
-      let locationUrl = new URL(res.headers.location);
-  
-      if (locationUrl.protocol === "http:" || locationUrl.protocol === "https:")
-        if (!data.crawled.includes(locationUrl.href) && !currentCrawl.includes(locationUrl.href))
-          data.toCrawl.push(locationUrl.href);
-    } catch {}
+    crawl(res.headers.location);
 
     let textData = "";
     res.setEncoding("utf8");
 
     res.on("error", () => {
-      currentCrawlCounter++
-      if (currentCrawlCounter >= currentCrawlLength) {
-        fs.writeFileSync("crawldata/data", JSON.stringify(data));
-        process.exit();
-      }
+      data.crawling.splice(data.crawling.indexOf(baseUrl), 1);
+      crawl(baseUrl);
     })
     res.on("data", chunk => { textData += chunk });
     res.on("end", () => {
       textData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, function(_1, _2, match2) {
-        let matchUrl;
-
-        try {
-          matchUrl = new URL(match2, baseUrl);
-
-          if (matchUrl.protocol !== "http:" && matchUrl.protocol !== "https:")
-            return;
-
-          if (!data.crawled.includes(matchUrl.href) && !currentCrawl.includes(matchUrl.href))
-            data.toCrawl.push(matchUrl.href);
-        } catch (err) {
-          console.warn(err.message);
-        }
+        crawl(match2);
       });
 
       const now = Date.now();
@@ -86,17 +54,31 @@ currentCrawl.forEach(href => {
         href: baseUrl.href,
         timestamp: now,
         index: index
-      })
+      });
 
-      fs.writeFileSync(`crawldata/http/${index}`, textData);
+      data.crawling.splice(data.crawling.indexOf(baseUrl.href), 1);
+
+      fs.writeFileSync(`crawldata/http/${index}`, textData, { flag: "w" });
 
       console.log(`Crawled \`${baseUrl.href}'`);
+    })
+  }).on("error", () => {
+    data.crawling.splice(data.crawling.indexOf(baseUrl), 1);
+  });
+}
 
-      currentCrawlCounter++;
-      if (currentCrawlCounter >= currentCrawlLength) {
-        fs.writeFileSync("crawldata/data", JSON.stringify(data));
-        process.exit();
-      }
-    });
-  })
+const initCrawling = Array.from(data.crawling);
+data.crawling = [];
+
+initCrawling.forEach(crawl);
+
+process.on("SIGINT", () => {
+  fs.writeFileSync("crawldata/data", JSON.stringify(data), { flag: "w" });
+  process.exit();
+});
+
+process.on("uncaughtException", err => {
+  fs.writeFileSync("crawldata/data", JSON.stringify(data), { flag: "w" });
+  console.error(err)
+  process.exit();
 });
