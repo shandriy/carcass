@@ -80,6 +80,7 @@ function crawl(href) {
     })
   }).on("error", () => {
     data.crawling.splice(data.crawling.indexOf(baseUrl), 1);
+    crawl(baseUrl);
   });
 }
 
