@@ -55,7 +55,7 @@ function crawl(href) {
       }
 
       textData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, matchRegex);
-      textData.replace(/(["'`])(https?:\/\/.+?\1)/gis, matchRegex);
+      textData.replace(/(["'`])(https?:\/\/.+?)\1/gis, matchRegex);
       textData.replace(/url\((["'])(.*?)\1\)/gis, matchRegex);
 
       matches.forEach(match => {
