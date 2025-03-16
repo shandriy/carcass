@@ -33,15 +33,17 @@ function crawl(href) {
   httpx.get(baseUrl, res => {
     crawl(res.headers.location);
 
-    let textData = "";
-    res.setEncoding("utf8");
+    let binData = [];
 
     res.on("error", () => {
       data.crawling.splice(data.crawling.indexOf(baseUrl), 1);
       crawl(baseUrl);
     })
-    res.on("data", chunk => { textData += chunk });
+    res.on("data", chunk => { binData.push(chunk) });
     res.on("end", () => {
+      const buffer = Buffer.concat(binData);
+      const textData = buffer.toString("utf8");
+
       textData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, function(_1, _2, match2) {
         crawl(match2);
       });
@@ -58,7 +60,7 @@ function crawl(href) {
 
       data.crawling.splice(data.crawling.indexOf(baseUrl.href), 1);
 
-      fs.writeFileSync(`crawldata/http/${index}`, textData, { flag: "w" });
+      fs.writeFileSync(`crawldata/http/${index}`, buffer, { flag: "w" });
 
       console.log(`Crawled \`${baseUrl.href}'`);
     })
