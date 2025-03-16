@@ -2,78 +2,73 @@ import * as fs from "node:fs";
 import * as http from "node:http";
 import * as https from "node:https";
 
-let crawledArr = [];
+let data = {
+  crawled: [],
+  crawledData: [],
+  toCrawl: [],
+}
 
-function crawl(href, inStream, outStream) {
-  let url, out = [];
+if (fs.existsSync("crawldata/data")) {
+  data = JSON.parse(fs.readFileSync("crawldata/data", { encoding: "utf8" }));
+}
 
-  try {
-    url = new URL(href);
-  } catch (err) {
-    return out;
-  }
+const currentCrawl = Array.from(data.toCrawl);
+data.toCrawl = [];
 
-  console.log(`Crawling \`${url.href}'`);
+let currentCrawlCounter = 0;
+const currentCrawlLength = currentCrawl.length;
 
-  const httpx = url.protocol === "http:" ? http : https;
+currentCrawl.forEach(href => {
+  const baseUrl = new URL(href);
 
-  if (url.protocol !== "https:" && url.protocol !== "http:")
-    return;
+  console.log(`Crawling \`${baseUrl.href}'`);
 
-  httpx.get(url, res => {
+  const httpx = baseUrl.protocol === "http:" ? http : https;
+  httpx.get(baseUrl, res => {
+    try {
+      let locationUrl = new URL(res.headers.location);
+  
+      if (locationUrl.protocol === "http:" || locationUrl.protocol === "https:")
+        if (!data.crawled.includes(locationUrl.href) && !currentCrawl.includes(locationUrl.href))
+          data.toCrawl.push(locationUrl.href);
+    } catch {}
+
+    let textData = "";
     res.setEncoding("utf8");
-    let outData = "";
 
-    if (res.headers.location)
-      out.push(new URL(res.headers.location, url).href);
-
-    res.on("data", chunk => { outData += chunk });
+    res.on("data", chunk => { textData += chunk });
     res.on("end", () => {
-      outData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, function(_1, _2, match2) {
-        out.push(new URL(match2, url).href);
+      textData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, function(_1, _2, match2) {
+        let matchUrl;
+
+        try {
+          matchUrl = new URL(match2, baseUrl);
+
+          if (matchUrl.protocol !== "http:" && matchUrl.protocol !== "https:")
+            return;
+
+          if (!data.crawled.includes(matchUrl.href) && !currentCrawl.includes(matchUrl.href))
+            data.toCrawl.push(matchUrl.href);
+        } catch (err) {
+          console.warn(err.message);
+        }
       });
 
-      let dir = `crawldata/${
-          url.protocol.substring(0, url.protocol.length - 1)
-        }/${
-          encodeURIComponent(url.href)
-            .replace(/^https?%3A%2F%2F/i, "")
-            .replace(/%2F/g, "/")
-        }`;
+      const now = Date.now();
+      const index = data.crawled.length;
 
-      fs.mkdirSync(dir, { recursive: true });
+      data.crawled.push(baseUrl.href);
+      data.crawledData.push({
+        href: baseUrl.href,
+        timestamp: now,
+      })
 
-      if (!crawledArr.includes(url.href)) {
-        outStream.write(`${url.href}\n`);
-        crawledArr.push(url.href);
+      fs.writeFileSync(`crawldata/http/${index}`, textData);
+
+      currentCrawlCounter++;
+      if (currentCrawlCounter >= currentCrawlLength) {
+        fs.writeFileSync("crawldata/data", JSON.stringify(data));
       }
-
-      fs.writeFileSync(`${dir}/${Date.now()}`, outData);
-
-      out.forEach(elem => {
-        if (!crawledArr.includes(elem))
-          inStream.write(`${elem}\n`);
-      });
     });
-  });
-}
-
-const args = process.argv;
-args.splice(0, 2);
-
-fs.mkdirSync("crawldata", { recursive: true });
-fs.mkdirSync("crawldata/http", { recursive: true });
-fs.mkdirSync("crawldata/https", { recursive: true });
-
-const toCrawl = fs.createWriteStream("crawldata/tocrawl.txt", { flags: "a" });
-const crawled = fs.createWriteStream("crawldata/crawled.txt", { flags: "a" });
-
-crawledArr = fs.readFileSync("crawldata/crawled.txt", { encoding: "utf8" }).split("\n");
-fs.readFileSync("crawldata/tocrawl.txt", { encoding: "utf8" }).split("\n").forEach(elem => {
-  args.push(elem);
-})
-fs.writeFileSync("crawldata/tocrawl.txt", "");
-
-for (let href of args) {
-  crawl(href, toCrawl, crawled);
-}
+  })
+});
