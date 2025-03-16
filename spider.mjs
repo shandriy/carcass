@@ -5,7 +5,7 @@ import * as https from "node:https";
 let data = {
   crawled: [],
   crawledData: [],
-  toCrawl: [],
+  toCrawl: []
 }
 
 if (fs.existsSync("crawldata/data")) {
@@ -19,12 +19,29 @@ let currentCrawlCounter = 0;
 const currentCrawlLength = currentCrawl.length;
 
 currentCrawl.forEach(href => {
+  let requestReached = false
+
   const baseUrl = new URL(href);
 
   console.log(`Crawling \`${baseUrl.href}'`);
 
   const httpx = baseUrl.protocol === "http:" ? http : https;
+
+  setTimeout(() => {
+    if (!requestReached) {
+      console.log(`Skipping \`${baseUrl.href}'`);
+
+      currentCrawlCounter++;
+      if (currentCrawlCounter >= currentCrawlLength) {
+        fs.writeFileSync("crawldata/data", JSON.stringify(data));
+        process.exit();
+      }
+    }
+  }, 10000)
+
   httpx.get(baseUrl, res => {
+    requestReached = true;
+
     try {
       let locationUrl = new URL(res.headers.location);
   
@@ -36,6 +53,13 @@ currentCrawl.forEach(href => {
     let textData = "";
     res.setEncoding("utf8");
 
+    res.on("error", () => {
+      currentCrawlCounter++
+      if (currentCrawlCounter >= currentCrawlLength) {
+        fs.writeFileSync("crawldata/data", JSON.stringify(data));
+        process.exit();
+      }
+    })
     res.on("data", chunk => { textData += chunk });
     res.on("end", () => {
       textData.replace(/(?:cite|href|src)\s*=\s*(["'])(.*?)\1/gis, function(_1, _2, match2) {
@@ -61,13 +85,17 @@ currentCrawl.forEach(href => {
       data.crawledData.push({
         href: baseUrl.href,
         timestamp: now,
+        index: index
       })
 
       fs.writeFileSync(`crawldata/http/${index}`, textData);
 
+      console.log(`Crawled \`${baseUrl.href}'`);
+
       currentCrawlCounter++;
       if (currentCrawlCounter >= currentCrawlLength) {
         fs.writeFileSync("crawldata/data", JSON.stringify(data));
+        process.exit();
       }
     });
   })
