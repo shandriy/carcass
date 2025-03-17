@@ -3,13 +3,30 @@ import * as http from "node:http";
 import * as https from "node:https";
 
 let data = {
+  files: 0,
   crawled: [],
-  crawledData: [],
-  crawling: []
+  crawling: [],
+  crawl: []
 }
 
 if (fs.existsSync("crawldata/data")) {
   data = JSON.parse(fs.readFileSync("crawldata/data", { encoding: "utf8", flag: "r" }));
+}
+
+function toCrawl(href) {
+  if (data.crawling.length < 1000)
+    crawl(href);
+  else
+    data.crawl.push(href);
+}
+
+function splice(href) {
+  data.crawling.splice(data.crawling.indexOf(href), 1);
+
+  if (data.crawling.length < 1000) {
+    crawl(data.crawl[0]);
+    data.crawl.splice(0, 1);
+  }
 }
 
 function crawl(href) {
@@ -30,14 +47,13 @@ function crawl(href) {
   console.log(`Crawling \`${baseUrl}'`)
 
   const httpx = baseUrl.protocol === "http:" ? http : https;
-  httpx.get(baseUrl, res => {
-    crawl(res.headers.location);
+  const req = httpx.get(baseUrl, res => {
+    toCrawl(res.headers.location);
 
     let binData = [];
 
     res.on("error", () => {
-      data.crawling.splice(data.crawling.indexOf(baseUrl), 1);
-      crawl(baseUrl);
+      splice(baseUrl.href);
     })
     res.on("data", chunk => { binData.push(chunk) });
     res.on("end", () => {
@@ -59,29 +75,39 @@ function crawl(href) {
       textData.replace(/url\((["'])(.*?)\1\)/gis, matchRegex);
 
       matches.forEach(match => {
-        crawl(match);
+        toCrawl(match);
       })
 
       const now = Date.now();
-      const index = data.crawled.length;
+      const index = data.files;
 
       data.crawled.push(baseUrl.href);
-      data.crawledData.push({
+      if (data.crawled > 10000)
+        data.crawled.splice(0, 1);
+
+      splice(baseUrl.href);
+
+      fs.writeFileSync(`crawldata/http/${index}`, JSON.stringify({
         href: baseUrl.href,
+        status: res.statusCode,
+        type: res.headers["content-type"],
         timestamp: now,
-        index: index
-      });
+        index: index,
+        data: buffer.toString("base64")
+      }), { flag: "w" });
 
-      data.crawling.splice(data.crawling.indexOf(baseUrl.href), 1);
-
-      fs.writeFileSync(`crawldata/http/${index}`, buffer, { flag: "w" });
+      data.files++;
 
       console.log(`Crawled \`${baseUrl.href}'`);
     })
   }).on("error", () => {
-    data.crawling.splice(data.crawling.indexOf(baseUrl), 1);
-    crawl(baseUrl);
+    splice(baseUrl.href);
   });
+
+  setTimeout(() => {
+    req.destroy(true);
+    console.log(`Request to \`${baseUrl.href}' timed out`);
+  }, 60000);
 }
 
 const initCrawling = Array.from(data.crawling);
@@ -96,6 +122,11 @@ process.on("SIGINT", () => {
 
 process.on("uncaughtException", err => {
   fs.writeFileSync("crawldata/data", JSON.stringify(data), { flag: "w" });
-  console.error(err)
+  console.error(err);
   process.exit();
 });
+
+process.on("exit", () => {
+  fs.writeFileSync("crawldata/data", JSON.stringify(data), { flag: "w" });
+  process.exit();
+})
