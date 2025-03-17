@@ -19,7 +19,7 @@ function toCrawl(href) {
       crawl(href);
     else
       data.crawl.push(href);
-  }, 1000)
+  }, 3000)
 }
 
 function splice(href) {
