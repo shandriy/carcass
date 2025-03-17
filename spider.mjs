@@ -14,10 +14,12 @@ if (fs.existsSync("crawldata/data")) {
 }
 
 function toCrawl(href) {
-  if (data.crawling.length < 1000)
-    crawl(href);
-  else
-    data.crawl.push(href);
+  setTimeout(() => {
+    if (data.crawling.length < 1000)
+      crawl(href);
+    else
+      data.crawl.push(href);
+  }, 1000)
 }
 
 function splice(href) {
@@ -107,7 +109,7 @@ function crawl(href) {
   setTimeout(() => {
     req.destroy(true);
     console.log(`Request to \`${baseUrl.href}' timed out`);
-  }, 60000);
+  }, 300000);
 }
 
 const initCrawling = Array.from(data.crawling);
