@@ -18,7 +18,8 @@ function toCrawl(href) {
     if (data.crawling.length < 1000)
       crawl(href);
     else
-      data.crawl.push(href);
+      if (data.crawl.length < 100000)
+        data.crawl.push(href);
   }, 3000)
 }
 
@@ -111,6 +112,10 @@ function crawl(href) {
     console.log(`Request to \`${baseUrl.href}' timed out`);
   }, 300000);
 }
+
+setInterval(() => {
+  fs.writeFileSync("crawldata/data", JSON.stringify(data), { flag: "w" });
+}, 60000);
 
 const initCrawling = Array.from(data.crawling);
 data.crawling = [];
